@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar System</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #07134e;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="solar"></canvas>
+    <script>
+      const canvas = document.getElementById("solar");
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      const textures = {
+        sun: "./texture/2k_sun.jpg",
+        mercury: "./texture/2k_mercury.jpg",
+        venus: "./texture/2k_venus_surface.jpg",
+        earth: "./texture/2k_earth_daymap.jpg",
+        moon: "./texture/2k_moon.jpg",
+        mars: "./texture/2k_mars.jpg",
+        jupiter: "./texture/2k_jupiter.jpg",
+        saturn: "./texture/2k_saturn.jpg",
+        uranus: "./texture/2k_uranus.jpg",
+        neptune: "./texture/2k_neptune.jpg"
+      };
+
+      const images = {};
+
+      function loadImage(key, src) {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            images[key] = img;
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = src;
+        });
+      }
+
+      const planets = [
+        { key: "mercury", label: "MERCURY", orbit: 95, size: 8, speed: 0.022, angle: 0.06, tx: -30, ty: 22 },
+        { key: "venus", label: "VENUS", orbit: 125, size: 11, speed: 0.017, angle: 0.32, tx: -18, ty: -20 },
+        { key: "earth", label: "EARTH", orbit: 160, size: 12, speed: 0.013, angle: 0.58, tx: -18, ty: 30 },
+        { key: "mars", label: "MARS", orbit: 195, size: 10, speed: 0.0105, angle: 0.84, tx: -10, ty: 24 },
+        { key: "jupiter", label: "JUPITER", orbit: 235, size: 20, speed: 0.0075, angle: 1.1, tx: -28, ty: 36 },
+        { key: "saturn", label: "SATURN", orbit: 280, size: 16, speed: 0.0058, angle: 1.36, tx: -22, ty: 30, saturn: true },
+        { key: "uranus", label: "URANUS", orbit: 325, size: 13, speed: 0.0044, angle: 1.62, tx: -24, ty: 28 },
+        { key: "neptune", label: "NEPTUNE", orbit: 370, size: 13, speed: 0.0033, angle: 1.88, tx: -26, ty: -22 }
+      ];
+
+      const moon = { orbit: 24, size: 4, speed: 0.04, angle: 5.3, label: "MOON" };
+      const stars = [];
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        stars.length = 0;
+        for (let i = 0; i < 180; i += 1) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.6 + 0.2,
+            a: Math.random() * 0.65 + 0.25
+          });
+        }
+      }
+
+      function drawText(text, x, y) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "18px Arial, sans-serif";
+        ctx.fillText(text, x, y);
+      }
+
+      function drawPlanet(img, x, y, r, fallbackColor) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        if (img) {
+          ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+        } else {
+          ctx.fillStyle = fallbackColor || "#ffffff";
+          ctx.fillRect(x - r, y - r, r * 2, r * 2);
+        }
+        ctx.restore();
+      }
+
+      function draw() {
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w * 0.5;
+        const cy = h * 0.5;
+        const sunR = Math.min(w, h) * 0.12;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, "#0c2a8e");
+        grad.addColorStop(1, "#050b3d");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        for (const s of stars) {
+          ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = "rgba(180, 190, 230, 0.55)";
+        ctx.lineWidth = 1.2;
+        for (const p of planets) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, p.orbit, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        drawPlanet(images.sun, cx, cy, sunR, "#ff8a00");
+        drawText("SUN", cx - 16, cy + sunR + 26);
+
+        let earthX = 0;
+        let earthY = 0;
+
+        for (const p of planets) {
+          p.angle += p.speed;
+          const x = cx + Math.cos(p.angle) * p.orbit;
+          const y = cy + Math.sin(p.angle) * p.orbit;
+
+          if (p.label === "EARTH") {
+            earthX = x;
+            earthY = y;
+          }
+
+          drawPlanet(p.key ? images[p.key] : null, x, y, p.size, p.color);
+
+          if (p.saturn) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(-0.42);
+            ctx.strokeStyle = "rgba(240, 214, 170, 0.95)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.size * 1.45, p.size * 0.6, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          drawText(p.label, x + p.tx, y + p.ty);
+        }
+
+        moon.angle += moon.speed;
+        const moonX = earthX + Math.cos(moon.angle) * moon.orbit;
+        const moonY = earthY + Math.sin(moon.angle) * moon.orbit;
+        drawPlanet(images.moon, moonX, moonY, moon.size, "#c8c8c8");
+        drawText(moon.label, moonX - 16, moonY - 10);
+
+        requestAnimationFrame(draw);
+      }
+
+      Promise.all(Object.entries(textures).map(([k, src]) => loadImage(k, src))).then(() => {
+        resize();
+        draw();
+      });
+
+      window.addEventListener("resize", resize);
+    </script>
+  </body>
+</html>
